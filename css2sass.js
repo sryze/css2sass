@@ -2,20 +2,24 @@
 
 const fs = require('fs');
 
-const RE_SELECTOR = /[\sa-zA-Z0-9\.\-+>*#:=()\[\]"']/;
-const RE_PROPERTY = /[a-zA-Z0-9-]/;
-const RE_WHITESPACE = /[\s\r\n]/;
-
-const ST_TOP = 'TOP';
-const ST_SEL = 'SEL';
-const ST_SEL_COMMA = 'SEL_COMMA';
-const ST_SEL_IN = 'SEL_IN';
-const ST_SEL_PROP = 'SEL_PROP';
-const ST_SEL_PROP_WS = 'SEL_PROP_WS';
-const ST_SEL_PROP_COLON = 'SEL_PROP_COLON';
-const ST_SEL_PROP_VALUE = 'SEL_PROP_VALUE';
+function parseCSSSelector(selector) {
+    return selector;
+}
 
 function parseCSSRules(css) {
+    const RE_SELECTOR = /[\sa-zA-Z0-9\.\-+>*#:=()\[\]"']/;
+    const RE_PROPERTY = /[a-zA-Z0-9-]/;
+    const RE_WHITESPACE = /[\s\r\n]/;
+
+    const ST_TOP = 'TOP';
+    const ST_SEL = 'SEL';
+    const ST_SEL_COMMA = 'SEL_COMMA';
+    const ST_SEL_IN = 'SEL_IN';
+    const ST_SEL_PROP = 'SEL_PROP';
+    const ST_SEL_PROP_WS = 'SEL_PROP_WS';
+    const ST_SEL_PROP_COLON = 'SEL_PROP_COLON';
+    const ST_SEL_PROP_VALUE = 'SEL_PROP_VALUE';
+    
     let lineNum = 1;
     let colNum = 1;
     let c;
@@ -40,7 +44,7 @@ function parseCSSRules(css) {
     }
 
     function endSelector() {
-        selectorStack.push(selector.trim());
+        selectorStack.push(parseCSSSelector(selector.trim()));
     }
 
     function endSelectors() {
