@@ -2,7 +2,7 @@
 
 const fs = require('fs');
 
-function parseCSSRules(css) {
+function parseRules(css) {
     const RE_SELECTOR = /[\sa-zA-Z0-9\.\-+>*#:=()\[\]"']/;
     const RE_PROPERTY = /[a-zA-Z0-9-]/;
     const RE_WHITESPACE = /[\s\r\n]/;
@@ -15,7 +15,7 @@ function parseCSSRules(css) {
     const ST_SEL_PROP_WS = 'SEL_PROP_WS';
     const ST_SEL_PROP_COLON = 'SEL_PROP_COLON';
     const ST_SEL_PROP_VALUE = 'SEL_PROP_VALUE';
-    
+
     let lineNum = 1;
     let colNum = 1;
     let c;
@@ -24,13 +24,10 @@ function parseCSSRules(css) {
     let property = '';
     let value = '';
     let selectors = [];
-    let selectorStack = [];
     let properties = [];
     const rules = [];
-    
+
     function error() {
-        console.log('selector', selector);
-        console.log('properties', properties);
         throw new Error(`Unexpected character '${c}' at line ${lineNum}, column ${colNum}`);
     }
 
@@ -40,11 +37,7 @@ function parseCSSRules(css) {
     }
 
     function endSelector() {
-        selectorStack.push(parseCSSSelector(selector.trim()));
-    }
-
-    function endSelectors() {
-        selectors.push(selectorStack);
+        selectors.push(parseSelector(selector.trim()));
     }
 
     function endProperty() {
@@ -58,7 +51,6 @@ function parseCSSRules(css) {
 
     function beginRule() {
         selectors = [];
-        selectorStack = [];
         beginRuleProperties();
     }
 
@@ -73,7 +65,7 @@ function parseCSSRules(css) {
         c = css[i];
         // console.log(i, state);
         // console.log('c: "' + c + '"`');
-        
+
         switch (state) {
             case ST_TOP:
                 if (RE_WHITESPACE.test(c)) {
@@ -83,7 +75,7 @@ function parseCSSRules(css) {
                     state = ST_SEL;
                 } else if (c == '{') {
                     state = ST_SEL_IN;
-                    endSelectors();
+                    endSelector();
                     beginRuleProperties();
                 } else {
                     error();
@@ -92,16 +84,12 @@ function parseCSSRules(css) {
             case ST_SEL:
                 if (RE_SELECTOR.test(c)) {
                     selector += c;
-                } else if (RE_WHITESPACE.test(c)) {
-                    state = ST_TOP;
-                    endSelector();
                 } else if (c == ',') {
                     state = ST_SEL_COMMA;
                     endSelector();
                 } else if (c == '{') {
                     state = ST_SEL_IN;
                     endSelector();
-                    endSelectors();
                     beginRuleProperties();
                 } else {
                     error();
@@ -176,7 +164,7 @@ function parseCSSRules(css) {
                 }
                 break;
         }
-        
+
         if (c == '\n') {
             lineNum++;
             colNum = 1;
@@ -184,16 +172,16 @@ function parseCSSRules(css) {
             colNum++;
         }
     }
-    
+
     return rules;
 }
 
-function parseCSSSelector(s) {
+function parseSelector(s) {
     const RE_ALPHA = /\w/;
     const RE_DELIM = /([.+~>:]|::)/;
     const RE_ID = /[a-zA-Z0-9-]/;
     const RE_WHITESPACE = /[\s\r\n]/;
-    
+
     const ST_DELIM = 'DELIM';
     const ST_ID = 'ID';
     const ST_CLASS = 'CLASS';
@@ -202,21 +190,21 @@ function parseCSSSelector(s) {
     const ST_TAG = 'TAG';
     const ST_ATTR = 'ATTR';
     const ST_ATTR_IN = 'ATTR_IN';
-    
+
     let c;
     let state = ST_DELIM;
     let selector = '';
     const components = [];
-    
+
     function error() {
         throw new Error(`Unexpected character '${c}' in '${s}'`);
     }
-    
+
     function endComponent() {
         if (!selector) {
             return;
         }
-        
+
         switch (state) {
             case ST_TAG:
                 components.push({selector, type: 'tag'});
@@ -234,14 +222,14 @@ function parseCSSSelector(s) {
                 components.push({selector, type: 'attribute'});
                 break;
         }
-        
+
         selector = '';
     }
-    
+
     for (let i = 0; i < s.length; i++) {
         c = s[i];
-        console.log(c, state);
-        
+        // console.log(c, state);
+
         switch (state) {
             case ST_DELIM:
                 if (RE_WHITESPACE.test(c)) {
@@ -303,30 +291,75 @@ function parseCSSSelector(s) {
                 break;
         }
     }
-    
+
     endComponent();
-        
+
     return components;
 }
 
+function createRuleTree(ruleList) {
+    const ruleTree = {};
+    for (const rule of ruleList) {
+        for (const chain of rule.selectors) {
+            let node = ruleTree;
+            for (const item of chain) {
+                node.items = node.items || {};
+                node.items[item.selector] = node.items[item.selector] || {};
+                node = node.items[item.selector];
+            }
+            node.properties = node.properties || [];
+            Array.prototype.push.apply(node.properties, rule.properties);
+        }
+    }
+    return ruleTree;
+}
+
+function indent(level, char, size) {
+    let s = '';
+    for (let i = 0; i < level; i++) {
+        for (let j = 0; j < size; j++) {
+            s += char;
+        }
+    }
+    return s;
+}
+
+function printRuleTree(root, indentChar, indentSize, level = 0) {
+    if (!root.items) {
+        return;
+    }
+    
+    indentChar = indentChar || ' ';
+    indentSize = indentSize != null ? indentSize : (indentChar == ' ' ? 4 : 1);
+    
+    for (const [selector, node] of Object.entries(root.items)) {
+        console.log(
+            (root.properties ? '\n' : '')
+            + indent(level, indentChar, indentSize) 
+            + selector + ' {');
+        if (node.properties) {
+            for (const p of node.properties) {
+                console.log(
+                    indent(level + 1, indentChar, indentSize) + p.name + ': ' + p.value + ';');
+            }
+        }
+        printRuleTree(node, indentChar, indentSize, level + 1);
+        console.log(
+            indent(level, indentChar, indentSize) 
+            + '}'
+            + (level == 0 ? '\n' : ''));
+    }
+}
+
 if (process.argv.length <= 2) {
-    console.error('Usage: css2sass <css_file_path>');
+    console.error('Usage: css2sass <css_file>');
     process.exit();
 }
 
 const css = fs.readFileSync(process.argv[2], 'utf-8');
-const rules = parseCSSRules(css);
+const rules = parseRules(css);
 
-console.log(JSON.stringify(rules, null, 4));
+// console.log(JSON.stringify(rules, null, 4));
+// console.log(JSON.stringify(createRuleTree(rules), null, 4));
 
-// console.log(parseCSSSelector('a'));
-// console.log(parseCSSSelector('#content'));
-// console.log(parseCSSSelector('.header'));
-// console.log(parseCSSSelector('.header.mobile'));
-// console.log(parseCSSSelector('.header > nav'));
-// console.log(parseCSSSelector('.header > nav > li'));
-// console.log(parseCSSSelector('.button:active'));
-// console.log(parseCSSSelector('.button:not(:active)'));
-// console.log(parseCSSSelector('.button:not(:active):not(:focus)'));
-// console.log(parseCSSSelector('input[name=address]'));
-// console.log(parseCSSSelector('input[name="address"]'));
+printRuleTree(createRuleTree(rules));

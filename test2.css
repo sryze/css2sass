@@ -1,0 +1,12 @@
+.header {
+    color: black;
+}
+
+.header .nav {
+    color: steelblue;
+}
+
+.header .nav,
+.footer .nav {
+    margin: 10px auto;
+}
