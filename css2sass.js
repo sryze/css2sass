@@ -190,7 +190,7 @@ function parseCSSRules(css) {
 
 function parseCSSSelector(s) {
     const RE_ALPHA = /\w/;
-    const RE_DELIM = /([.+~>:\[]|::)/;
+    const RE_DELIM = /([.+~>:]|::)/;
     const RE_ID = /[a-zA-Z0-9-]/;
     const RE_WHITESPACE = /[\s\r\n]/;
     
@@ -200,11 +200,11 @@ function parseCSSSelector(s) {
     const ST_PCLASS = 'PCLASS';
     const ST_PCLASS_IN = 'PCLASS_IN';
     const ST_TAG = 'TAG';
-    const ST_ATTR_BEGIN = 'ATTR_BEGIN';
+    const ST_ATTR = 'ATTR';
+    const ST_ATTR_IN = 'ATTR_IN';
     
     let c;
     let state = ST_DELIM;
-    let name = '';
     let selector = '';
     const components = [];
     
@@ -213,31 +213,34 @@ function parseCSSSelector(s) {
     }
     
     function endComponent() {
-        if (!name) {
+        if (!selector) {
             return;
         }
         
         switch (state) {
+            case ST_TAG:
+                components.push({selector, type: 'tag'});
+                break;
             case ST_ID:
-                components.push({name, selector, type: 'id'});
+                components.push({selector, type: 'id'});
                 break;
             case ST_CLASS:
-                components.push({name, selector, type: 'class'});
+                components.push({selector, type: 'class'});
                 break;
             case ST_PCLASS:
-                components.push({name, selector, type: 'pclass'});
+                components.push({selector, type: 'pclass'});
                 break;
-            case ST_TAG:
-                components.push({name, selector, type: 'tag'});
+            case ST_ATTR:
+                components.push({selector, type: 'attribute'});
                 break;
         }
         
-        name = selector = '';
+        selector = '';
     }
     
     for (let i = 0; i < s.length; i++) {
         c = s[i];
-        // console.log(c, state);
+        console.log(c, state);
         
         switch (state) {
             case ST_DELIM:
@@ -254,7 +257,6 @@ function parseCSSSelector(s) {
                         state = ST_PCLASS;
                     } else if (RE_ALPHA.test(c)) {
                         state = ST_TAG;
-                        name += c;
                     } else if (RE_DELIM.test(c)) {
                         // ok?
                     } else {
@@ -263,10 +265,11 @@ function parseCSSSelector(s) {
                     selector += c;
                 }
                 break;
+            case ST_TAG:
             case ST_ID:
             case ST_CLASS:
             case ST_PCLASS:
-            case ST_TAG:
+            case ST_ATTR:
                 if (RE_WHITESPACE.test(c)) {
                     endComponent();
                 } else if (RE_DELIM.test(c)) {
@@ -274,11 +277,13 @@ function parseCSSSelector(s) {
                     i--;
                     state = ST_DELIM;
                 } else if (RE_ID.test(c)) {
-                    name += c;
                     selector += c;
                 } else if (c == '(' && state == ST_PCLASS) {
                     state = ST_PCLASS_IN;
-                    name += c;
+                    selector += c;
+                } else if (c == '[') {
+                    endComponent();
+                    state = ST_ATTR_IN;
                     selector += c;
                 } else {
                     error();
@@ -288,7 +293,12 @@ function parseCSSSelector(s) {
                 if (c == ')') {
                     state = ST_PCLASS;
                 }
-                name += c;
+                selector += c;
+                break;
+            case ST_ATTR_IN:
+                if (c == ']') {
+                    state = ST_ATTR;
+                }
                 selector += c;
                 break;
         }
@@ -318,3 +328,5 @@ console.log(JSON.stringify(rules, null, 4));
 // console.log(parseCSSSelector('.button:active'));
 // console.log(parseCSSSelector('.button:not(:active)'));
 // console.log(parseCSSSelector('.button:not(:active):not(:focus)'));
+// console.log(parseCSSSelector('input[name=address]'));
+// console.log(parseCSSSelector('input[name="address"]'));
