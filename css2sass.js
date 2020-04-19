@@ -351,15 +351,8 @@ function printRuleTree(root, indentChar, indentSize, level = 0) {
     }
 }
 
-if (process.argv.length <= 2) {
-    console.error('Usage: css2sass <css_file>');
-    process.exit();
-}
-
-const css = fs.readFileSync(process.argv[2], 'utf-8');
+const inputFile = process.argv.length >= 3 ? process.argv[2] : process.stdin.fd;
+const css = fs.readFileSync(inputFile, 'utf-8');
 const rules = parseRules(css);
-
-// console.log(JSON.stringify(rules, null, 4));
-// console.log(JSON.stringify(createRuleTree(rules), null, 4));
 
 printRuleTree(createRuleTree(rules));
