@@ -153,7 +153,7 @@ function parseRules(css) {
                 break;
             case ST_SEL_PROP_VALUE:
                 if (c == '}') {
-                    state = ST_SEL_TOP;
+                    state = ST_TOP;
                     endProperty();
                     endRule();
                 } else if (c == ';') {
@@ -314,6 +314,32 @@ function createRuleTree(ruleList) {
     return ruleTree;
 }
 
+function printRuleTree(root, indentChar, indentSize, level = 0) {
+    if (!root.items) {
+        return '';
+    }
+    
+    let result = '';
+    indentChar = indentChar || ' ';
+    indentSize = indentSize != null ? indentSize : (indentChar == ' ' ? 4 : 1);
+    
+    for (const [selector, node] of Object.entries(root.items)) {
+        result +=
+            (root.properties ? '\n' : '')
+            + indent(level, indentChar, indentSize) 
+            + selector + ' {\n';
+        if (node.properties) {
+            for (const p of node.properties) {
+                result += indent(level + 1, indentChar, indentSize) + p.name + ': ' + p.value + ';\n';
+            }
+        }
+        printRuleTree(node, indentChar, indentSize, level + 1);
+        result += indent(level, indentChar, indentSize)  + '}' + (level == 0 ? '\n' : '') + '\n';
+    }
+    
+    return result;
+}
+
 function indent(level, char, size) {
     let s = '';
     for (let i = 0; i < level; i++) {
@@ -324,35 +350,15 @@ function indent(level, char, size) {
     return s;
 }
 
-function printRuleTree(root, indentChar, indentSize, level = 0) {
-    if (!root.items) {
-        return;
-    }
-    
-    indentChar = indentChar || ' ';
-    indentSize = indentSize != null ? indentSize : (indentChar == ' ' ? 4 : 1);
-    
-    for (const [selector, node] of Object.entries(root.items)) {
-        console.log(
-            (root.properties ? '\n' : '')
-            + indent(level, indentChar, indentSize) 
-            + selector + ' {');
-        if (node.properties) {
-            for (const p of node.properties) {
-                console.log(
-                    indent(level + 1, indentChar, indentSize) + p.name + ': ' + p.value + ';');
-            }
-        }
-        printRuleTree(node, indentChar, indentSize, level + 1);
-        console.log(
-            indent(level, indentChar, indentSize) 
-            + '}'
-            + (level == 0 ? '\n' : ''));
-    }
-}
-
 const inputFile = process.argv.length >= 3 ? process.argv[2] : process.stdin.fd;
 const css = fs.readFileSync(inputFile, 'utf-8');
 const rules = parseRules(css);
 
 printRuleTree(createRuleTree(rules));
+
+module.exports = {
+    parseSelector,
+    parseRules,
+    createRuleTree,
+    printRuleTree
+};
