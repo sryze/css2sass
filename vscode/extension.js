@@ -1,7 +1,7 @@
 'use strict';
 
 const vscode = require('vscode');
-const {parseRules, createRuleTree, printRuleTree} = require('../css2sass');
+const {parseRules, createRuleTree, printRuleTree} = require('../lib/css2sass');
 
 function transformEditorSelection(transformer) {
     const editor = vscode.window.activeTextEditor;
@@ -25,6 +25,7 @@ function activate(context) {
     context.subscriptions.push(
         vscode.commands.registerCommand('css2sass.convertToSCSS', () => {
             transformEditorSelection(convertToSCSS);
+            vscode.window.showInformationMessage('Success!');
         })
     );
 }
