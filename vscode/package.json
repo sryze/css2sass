@@ -10,14 +10,14 @@
 		"Other"
 	],
 	"activationEvents": [
-        "onCommand:css2sass.convertToSCSS"
-    ],
+		"onCommand:css2sass.convertToSCSS"
+	],
 	"main": "./extension.js",
 	"contributes": {
 		"commands": [
 			{
 				"command": "css2sass.convertToSCSS",
-				"title": "Convert to SCSS"
+				"title": "Convert CSS to SCSS"
 			}
 		]
 	},
